@@ -7,19 +7,22 @@ namespace AngleSharp.Js
 
     sealed class PrototypeCache
     {
-        private readonly ConcurrentDictionary<Type, ObjectInstance> _prototypes;
         private readonly Engine _engine;
+        private readonly ConcurrentDictionary<Type, ObjectInstance> _prototypes;
 
         public PrototypeCache(Engine engine)
         {
-            _prototypes = new ConcurrentDictionary<Type, ObjectInstance>
-            {
-                [typeof(Object)] = engine.Object.PrototypeObject,
-            };
             _engine = engine;
+            _prototypes = new ConcurrentDictionary<Type, ObjectInstance>();
         }
 
-        public ObjectInstance GetOrCreate(Type type, Func<Type, ObjectInstance> creator) =>
-            _prototypes.GetOrAdd(type, creator.Invoke);
+        public ObjectInstance GetOrCreate(Type type, Func<Type, ObjectInstance> creator)
+        {
+            if (type == typeof(object))
+            {
+                return _engine.Intrinsics.Object.PrototypeObject;
+            }
+            return _prototypes.GetOrAdd(type, creator.Invoke);
+        }
     }
 }

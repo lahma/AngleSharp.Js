@@ -1,3 +1,5 @@
+using Jint;
+
 namespace AngleSharp.Js
 {
     using Jint.Native;
@@ -20,13 +22,13 @@ namespace AngleSharp.Js
             }
             else if (targetType.GetTypeInfo().IsSubclassOf(typeof(Delegate)))
             {
-                var f = obj as FunctionInstance;
+                var f = obj as Function;
 
                 if (f == null && obj is String b)
                 {
                     var e = engine.Jint;
-                    var p = new[] { new JsValue(b) };
-                    f = new ClrFunctionInstance(e, (_this, args) => e.Eval.Call(_this, p));
+                    var p = new JsValue[] { b };
+                    f = new ClrFunction(e,  "",(_this, args) => e.Intrinsics.Eval.Call(_this, p));
                 }
 
                 if (f != null)
@@ -56,7 +58,7 @@ namespace AngleSharp.Js
                     var node = obj as DomNodeInstance;
                     return node != null ? node.Value : obj;
                 case Types.Undefined:
-                    return Undefined.Text;
+                    return "undefined";
                 case Types.Null:
                     return null;
             }

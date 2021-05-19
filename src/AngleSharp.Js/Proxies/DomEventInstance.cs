@@ -1,3 +1,5 @@
+using Jint;
+
 namespace AngleSharp.Js
 {
     using AngleSharp.Dom;
@@ -13,27 +15,27 @@ namespace AngleSharp.Js
         private readonly MethodInfo _addHandler;
         private readonly MethodInfo _removeHandler;
         private DomEventHandler _handler;
-        private FunctionInstance _function;
+        private Function _function;
 
         public DomEventInstance(EngineInstance engine, MethodInfo addHandler, MethodInfo removeHandler)
         {
             _engine = engine;
             _addHandler = addHandler;
             _removeHandler = removeHandler;
-            Getter = new ClrFunctionInstance(engine.Jint, GetEventHandler);
-            Setter = new ClrFunctionInstance(engine.Jint, SetEventHandler);
+            Getter = new ClrFunction(engine.Jint, "get", GetEventHandler);
+            Setter = new ClrFunction(engine.Jint, "set", SetEventHandler);
         }
 
-        public ClrFunctionInstance Getter { get; }
+        public ClrFunction Getter { get; }
 
-        public ClrFunctionInstance Setter { get; }
+        public ClrFunction Setter { get; }
 
         private JsValue GetEventHandler(JsValue thisObject, JsValue[] arguments) =>
             _function ?? JsValue.Null;
 
         private JsValue SetEventHandler(JsValue thisObject, JsValue[] arguments)
         {
-            var node = thisObject.As<DomNodeInstance>();
+            var node = thisObject as DomNodeInstance;
 
             if (node != null)
             {
@@ -44,9 +46,9 @@ namespace AngleSharp.Js
                     _function = null;
                 }
 
-                if (arguments[0].Is<FunctionInstance>())
+                if (arguments[0] is Function functionInstance)
                 {
-                    _function = arguments[0].As<FunctionInstance>();
+                    _function = functionInstance;
                     _handler = (s, ev) =>
                     {
                         var sender = s.ToJsValue(_engine);

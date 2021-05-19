@@ -1,10 +1,12 @@
+using AngleSharp.Attributes;
+using Jint.Runtime.Interop;
+
 namespace AngleSharp.Js
 {
     using AngleSharp.Dom;
     using Jint;
     using Jint.Native;
     using Jint.Native.Object;
-    using Jint.Runtime.Environments;
     using System;
     using System.Collections.Generic;
     using System.Reflection;
@@ -13,13 +15,44 @@ namespace AngleSharp.Js
     {
         #region Fields
 
-        private readonly Engine _engine;
-        private readonly PrototypeCache _prototypes;
-        private readonly ReferenceCache _references;
-        private readonly IEnumerable<Assembly> _libs;
-        private readonly LexicalEnvironment _lexicals;
-        private readonly LexicalEnvironment _variables;
-        private readonly DomNodeInstance _window;
+        private Engine _engine;
+        private AngleSharpHost _host;
+
+        private static readonly TypeResolver _typeResolver = new()
+        {
+            MemberNameCreator = MemberNameCreator
+        };
+
+        internal static IEnumerable<string> MemberNameCreator(MemberInfo member)
+        {
+            var found = false;
+            var attributes = member.GetCustomAttributes(typeof(DomNameAttribute), inherit: true);
+            foreach (DomNameAttribute attribute in attributes)
+            {
+                found = true;
+                yield return attribute.OfficialName;
+            }
+
+            // check interfaces
+            foreach (var interfaceType in member.DeclaringType.GetInterfaces())
+            {
+                var memberInfos = interfaceType.GetMember(member.Name);
+                foreach (var interfaceMember in memberInfos)
+                {
+                    attributes = interfaceMember.GetCustomAttributes(typeof(DomNameAttribute), inherit: true);
+                    foreach (DomNameAttribute attribute in attributes)
+                    {
+                        found = true;
+                        yield return attribute.OfficialName;
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                yield return member.Name;
+            }
+        }
 
         #endregion
 
@@ -29,40 +62,35 @@ namespace AngleSharp.Js
         {
             var context = window.Document.Context;
             var logger = context.GetService<IConsoleLogger>();
-            _engine = new Engine();
-            _prototypes = new PrototypeCache(_engine);
-            _references = new ReferenceCache();
-            _libs = libs;
-            _engine.SetValue("console", new ConsoleInstance(_engine, logger));
 
-            foreach (var assignment in assignments)
+            _engine = new Engine((engine, options) =>
             {
-                _engine.SetValue(assignment.Key, assignment.Value);
-            }
+                _engine = engine;
+                options.UseHostFactory(_ =>
+                {
+                    _host = new AngleSharpHost(
+                        this,
+                        window,
+                        assignments,
+                        libs,
+                        logger);
 
-            _window = GetDomNode(window);
-            _lexicals = LexicalEnvironment.NewObjectEnvironment(_engine, _window, _engine.ExecutionContext.LexicalEnvironment, true);
-            _variables = LexicalEnvironment.NewObjectEnvironment(_engine, _engine.Global, null, false);
+                    return _host;
+                });
+                options.SetTypeResolver(_typeResolver);
+                options.Interop.ValueCoercion = ValueCoercionType.All;
+                options.SetWrapObjectHandler((e, target, type) => _host.GetDomNode(target));
+            });
 
-            foreach (var lib in libs)
-            {
-                this.AddConstructors(_window, lib);
-                this.AddConstructors(_window, lib);
-                this.AddInstances(_window, lib);
-            }
         }
 
         #endregion
 
         #region Properties
 
-        public IEnumerable<Assembly> Libs => _libs;
+        public IEnumerable<Assembly> Libs => _host.Libs;
 
-        public DomNodeInstance Window => _window;
-
-        public LexicalEnvironment Lexicals => _lexicals;
-
-        public LexicalEnvironment Variables => _variables;
+        public DomNodeInstance Window => _host.Window;
 
         public Engine Jint => _engine;
 
@@ -70,28 +98,18 @@ namespace AngleSharp.Js
 
         #region Methods
 
-        public DomNodeInstance GetDomNode(Object obj) => _references.GetOrCreate(obj, CreateInstance);
+        public DomNodeInstance GetDomNode(Object obj) => _host.GetDomNode(obj);
 
-        public ObjectInstance GetDomPrototype(Type type) => _prototypes.GetOrCreate(type, CreatePrototype);
+        public ObjectInstance GetDomPrototype(Type type) => _host.GetDomPrototype(type);
 
         public JsValue RunScript(String source, JsValue context)
         {
             lock (_engine)
             {
-                _engine.EnterExecutionContext(Lexicals, Variables, context);
-                _engine.Execute(source);
-                _engine.LeaveExecutionContext();
-                return _engine.GetCompletionValue();
+                var result = _engine.Evaluate(source);
+                return result;
             }
         }
-
-        #endregion
-
-        #region Helpers
-
-        private DomNodeInstance CreateInstance(Object obj) => new DomNodeInstance(this, obj);
-
-        private ObjectInstance CreatePrototype(Type type) => new DomPrototypeInstance(this, type);
 
         #endregion
     }

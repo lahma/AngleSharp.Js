@@ -7,8 +7,6 @@ namespace AngleSharp.Js
     using Jint.Native;
     using Jint.Native.Object;
     using Jint.Runtime;
-    using Jint.Runtime.Descriptors;
-    using Jint.Runtime.Interop;
     using System;
     using System.Collections.Generic;
     using System.Reflection;
@@ -19,33 +17,33 @@ namespace AngleSharp.Js
         {
             if (obj != null)
             {
-                if (obj is String)
+                if (obj is String s)
                 {
-                    return new JsValue((String)obj);
+                    return s;
                 }
-                else if (obj is Int32)
+                else if (obj is Int32 int32)
                 {
-                    return new JsValue((Int32)obj);
+                    return  int32;
                 }
-                else if (obj is UInt32)
+                else if (obj is UInt32 uint32)
                 {
-                    return new JsValue((UInt32)obj);
+                    return uint32;
                 }
-                else if (obj is Double)
+                else if (obj is Double d)
                 {
-                    return new JsValue((Double)obj);
+                    return d;
                 }
-                else if (obj is Single)
+                else if (obj is Single single)
                 {
-                    return new JsValue((Single)obj);
+                    return single;
                 }
-                else if (obj is Boolean)
+                else if (obj is Boolean b)
                 {
-                    return new JsValue((Boolean)obj);
+                    return b;
                 }
                 else if (obj is Enum)
                 {
-                    return new JsValue(Convert.ToInt32(obj));
+                    return Convert.ToInt32(obj);
                 }
 
                 return engine.GetDomNode(obj);
@@ -53,18 +51,6 @@ namespace AngleSharp.Js
 
             return JsValue.Null;
         }
-
-        public static ClrFunctionInstance AsValue(this Engine engine, Func<JsValue, JsValue[], JsValue> func) =>
-            new ClrFunctionInstance(engine, func);
-
-        public static PropertyDescriptor AsProperty(this Engine engine, Func<JsValue, JsValue> getter, Action<JsValue, JsValue> setter) =>
-            new PropertyDescriptor(new GetterFunctionInstance(engine, getter), new SetterFunctionInstance(engine, setter), true, true);
-
-        public static PropertyDescriptor AsProperty(this Engine engine, Func<JsValue, JsValue> getter) =>
-            new PropertyDescriptor(new GetterFunctionInstance(engine, getter), null, true, false);
-
-        public static PropertyDescriptor AsProperty(this Engine engine, Action<JsValue, JsValue> setter) =>
-            new PropertyDescriptor(null, new SetterFunctionInstance(engine, setter), true, false);
 
         public static Object[] BuildArgs(this EngineInstance context, MethodBase method, JsValue[] arguments)
         {
@@ -224,7 +210,7 @@ namespace AngleSharp.Js
                 }
                 catch (TargetInvocationException)
                 {
-                    throw new JavaScriptException(instance.Jint.Error);
+                    throw new JavaScriptException(instance.Jint.Intrinsics.Error);
                 }
             }
 

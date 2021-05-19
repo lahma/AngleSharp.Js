@@ -1,3 +1,5 @@
+using Jint.Runtime.Descriptors;
+
 namespace AngleSharp.Js
 {
     using Jint.Native.Function;
@@ -10,7 +12,7 @@ namespace AngleSharp.Js
 
         public DomConstructors(EngineInstance engine)
         {
-            Object = engine.Jint.Object;
+            Object = engine.Jint.Intrinsics.Object;
             _engine = engine;
         }
 
@@ -28,8 +30,8 @@ namespace AngleSharp.Js
 
             foreach (var property in properties)
             {
-                var func = property.GetValue(this) as FunctionInstance;
-                obj.FastAddProperty(property.Name, func, true, false, true);
+                var func = property.GetValue(this) as Function;
+                obj.FastSetProperty(property.Name, new PropertyDescriptor(func, writable: true, enumerable: false, configurable: true));
             }
         }
 

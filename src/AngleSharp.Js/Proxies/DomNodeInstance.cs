@@ -1,3 +1,5 @@
+using Jint.Native;
+
 namespace AngleSharp.Js
 {
     using Jint.Native.Object;
@@ -6,26 +8,24 @@ namespace AngleSharp.Js
 
     sealed class DomNodeInstance : ObjectInstance
     {
-        private readonly EngineInstance _instance;
         private readonly Object _value;
 
         public DomNodeInstance(EngineInstance engine, Object value)
             : base(engine.Jint)
         {
-            _instance = engine;
             _value = value;
-            
-            Extensible = true;
+
             Prototype = engine.GetDomPrototype(value.GetType());
         }
 
         public Object Value => _value;
 
-        public override String Class => Prototype.Class;
+        public override object ToObject() => _value;
 
-        public override PropertyDescriptor GetOwnProperty(String propertyName)
+        public override PropertyDescriptor GetOwnProperty(JsValue propertyName)
         {
-            if (Prototype is DomPrototypeInstance prototype && prototype.TryGetFromIndex(_value, propertyName, out var descriptor))
+            if (Prototype is DomPrototypeInstance prototype
+                && prototype.TryGetFromIndex(_value, propertyName.ToString(), out var descriptor))
             {
                 return descriptor;
             }

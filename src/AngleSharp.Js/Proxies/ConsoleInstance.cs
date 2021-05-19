@@ -1,3 +1,5 @@
+using Jint.Runtime.Descriptors;
+
 namespace AngleSharp.Js
 {
     using Jint;
@@ -14,7 +16,7 @@ namespace AngleSharp.Js
             : base(engine)
         {
             _logger = logger;
-            FastAddProperty("log", new ClrFunctionInstance(engine, Log), false, false, false);
+            FastSetProperty("log", new PropertyDescriptor(new ClrFunction(engine, "log", Log), false, false, false));
         }
 
         private JsValue Log(JsValue ctx, JsValue[] args)
