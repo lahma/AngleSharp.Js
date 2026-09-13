@@ -55,36 +55,65 @@ namespace AngleSharp.Js
         public static String GetOfficialName(this MemberInfo member)
         {
             var names = member.GetCustomAttributes<DomNameAttribute>();
-            var officalNameAttribute = names.FirstOrDefault();
-            return officalNameAttribute?.OfficialName ?? member.Name;
+            var officialNameAttribute = names.FirstOrDefault();
+            return officialNameAttribute?.OfficialName ?? member.Name;
         }
 
         public static String GetOfficialName(this Type currentType, Type baseType)
         {
+            return currentType.GetOfficialNames(baseType).FirstOrDefault();
+        }
+
+        public static String[] GetOfficialNames(this Type currentType, Type baseType)
+        {
             var ti = currentType.GetTypeInfo();
-            var name = ti.GetCustomAttribute<DomNameAttribute>(true)?.OfficialName;
+            var names = ti.GetCustomAttributes<DomNameAttribute>(true)
+                .Select(m => m.OfficialName)
+                .Where(m => m != null)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
 
-            if (name == null)
+            if (names.Length > 0)
             {
-                var interfaces = ti.ImplementedInterfaces;
+                return names;
+            }
 
-                if (baseType != null)
+            var interfaces = ti.ImplementedInterfaces;
+
+            if (baseType != null)
+            {
+                var bi = baseType.GetTypeInfo();
+                var exclude = bi.ImplementedInterfaces;
+                interfaces = interfaces.Except(exclude);
+            }
+
+            foreach (var impl in interfaces)
+            {
+                names = impl.GetTypeInfo().GetCustomAttributes<DomNameAttribute>(false)
+                    .Select(m => m.OfficialName)
+                    .Where(m => m != null)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
+
+                if (names.Length > 0)
                 {
-                    var bi = baseType.GetTypeInfo();
-                    var exclude = bi.ImplementedInterfaces;
-                    interfaces = interfaces.Except(exclude);
-                }
-
-                foreach (var impl in interfaces)
-                {
-                    name = impl.GetTypeInfo().GetCustomAttribute<DomNameAttribute>(false)?.OfficialName;
-
-                    if (name != null)
-                        break;
+                    return names;
                 }
             }
 
-            return name;
+            return Array.Empty<String>();
+        }
+
+        public static String GetOfficialName(this Enum value)
+        {
+            var enumType = value.GetType();
+            var member = enumType.GetMember(value.ToString()).FirstOrDefault();
+
+            // if the enum value does not have a DomNameAttribute, calling member.GetOfficialName() would return the value name
+            // to allow previous behaviour to be preserved, if the DomNameAttribute is not present then null will be returned
+            var names = member.GetCustomAttributes<DomNameAttribute>();
+            var officialNameAttribute = names.FirstOrDefault();
+            return officialNameAttribute?.OfficialName;
         }
 
         public static PropertyInfo GetInheritedProperty(this Type type, String propertyName, BindingFlags bindingAttr = BindingFlags.Public | BindingFlags.Instance)

@@ -75,6 +75,8 @@ artifacts/
 [Tt]ools/
 ![Tt]ools/packages.config
 TestResults/
+node_modules
+package-lock.json
 *.nuget.targets
 *.nuget.props
 *.nupkg
@@ -192,3 +194,8 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+
+# Fallout build tool
+.fallout/temp
+# The Python-era "build" pattern above would swallow the build project directory
+!/build/
